@@ -38,7 +38,7 @@ jobs:
         run: python birlesik.py
 
       # Git commit ve push
-      - name: Commit and push Birlesik.m3u
+      - name: Commit and push Trgoalsvsdengetv.m3u
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
