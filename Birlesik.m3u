@@ -379,6 +379,10 @@ https://one.ecaf0a63ab9b6020.click/live/selcukbeinsportsmax2/playlist.m3u8
 #EXTVLCOPT:http-referrer=https://www.sporcafe22.xyz/
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
 https://one.ecaf0a63ab9b6020.click/live/selcuktivibuspor1/playlist.m3u8
+#EXTINF:-1 tvg-id="tivibu2" tvg-name="Tivibu Spor 2" tvg-logo="https://r2.thesportsdb.com/images/media/channel/logo/kuasdm1642604455.png" group-title="Sporcafe",Tivibu Spor 2
+#EXTVLCOPT:http-referrer=https://www.sporcafe22.xyz/
+#EXTVLCOPT:http-user-agent=Mozilla/5.0
+https://one.ecaf0a63ab9b6020.click/live/selcuktivibuspor2/playlist.m3u8
 #EXTINF:-1 tvg-id="tivibu3" tvg-name="Tivibu Spor 3" tvg-logo="https://r2.thesportsdb.com/images/media/channel/logo/slwrz41642604502.png" group-title="Sporcafe",Tivibu Spor 3
 #EXTVLCOPT:http-referrer=https://www.sporcafe22.xyz/
 #EXTVLCOPT:http-user-agent=Mozilla/5.0
@@ -417,4 +421,4 @@ https://one.ecaf0a63ab9b6020.click/live/selcukeurosport1/playlist.m3u8
 https://one.ecaf0a63ab9b6020.click/live/selcukeurosport2/playlist.m3u8
 
 
-# Generated: 2025-08-23T05:40:30.046317
+# Generated: 2025-08-23T06:27:35.032234
