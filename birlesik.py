@@ -31,7 +31,7 @@ class Dengetv54Manager:
                     return url
             except Exception: continue
         print("Dengetv: Çalışan domain bulunamadı, varsayılan kullanılıyor.")
-        return "https://dengetv54.live/"
+        return "https://dengetv58.live/"
 
     def calistir(self):
         referer = self.find_working_domain()
