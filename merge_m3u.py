@@ -7,11 +7,9 @@ playlist_urls = [
     "https://cine10giris.org.tr/ulusaltv.m3u",
     "https://raw.githubusercontent.com/ahmet21ahmet/F-n/main/scripts%2Fcanli-tv.m3u",
     "https://raw.githubusercontent.com/ahmet21ahmet/Trgoalsvsdengetv/main/Birlesik.m3u",
-    "https://andro.kopernik6411.workers.dev/DeaTHLesS-iptv.m3u",
-    "https://salamin.kopernik6411.workers.dev/DeaTHLesS-BOTV30.m3u"
-]
+   
 
-# Kanalları kategorize etmek için kullanılacak anahtar kelimeler
+# Eğer kaynak listede kategori yoksa kullanılacak akıllı kategori sistemi
 # Sıralama önemlidir; ilk eşleşme kullanılır.
 CATEGORIES = {
     "Spor": ["spor", "sport", "bein", "ssport", "tivibu", "d-smart", "fb tv", "gs tv", "bjk tv"],
@@ -26,27 +24,43 @@ CATEGORIES = {
 DEFAULT_CATEGORY = "Diğer Kanallar"
 
 # Kanalların benzersizliğini kontrol etmek için kullanılacak set
-# (Kanal Adı, URL) tuple'larını saklayacak
 unique_channels_set = set()
 
 # Kategorize edilmiş kanalları tutacak dictionary
-# defaultdict, anahtar yoksa otomatik olarak boş bir liste oluşturur.
 categorized_channels = defaultdict(list)
 
-def get_channel_info(extinf_line):
-    """#EXTINF satırından kanal adını ve diğer bilgileri çeker."""
-    try:
-        parts = extinf_line.split(',', 1)
-        # tvg-id, tvg-logo gibi bilgileri içeren kısım
-        attributes = parts[0] 
-        # Kanalın asıl adı
-        name = parts[1].strip()
-        return name, attributes
-    except IndexError:
-        return None, None
+def parse_extinf_line(line):
+    """
+    #EXTINF satırını analiz eder. Mevcut group-title'ı, kanal adını ve 
+    diğer özellikleri (temizlenmiş halde) ayıklar.
+    """
+    info = {
+        "name": None,
+        "category": None,
+        "attributes": line  # Başlangıçta satırın tamamını al
+    }
+    
+    # 1. Regex ile mevcut group-title'ı bul (büyük/küçük harf duyarsız)
+    match = re.search(r'group-title="([^"]*)"', line, re.IGNORECASE)
+    if match:
+        # Tırnak içindeki kategori adını al
+        info["category"] = match.group(1).strip()
+        # Yeniden yazarken çakışma olmaması için orijinal satırdan group-title kısmını çıkar
+        info["attributes"] = (line[:match.start()] + line[match.end():]).strip()
 
-def categorize_channel(channel_name):
-    """Verilen kanal adına göre bir kategori döndürür."""
+    # 2. Kanal adını bul (her zaman en sondaki virgülden sonradır)
+    try:
+        parts = info["attributes"].rsplit(',', 1)
+        info["attributes"] = parts[0]
+        info["name"] = parts[1].strip()
+    except IndexError:
+        # Virgül olmayan satırlar için (nadir bir durum)
+        info["name"] = info["attributes"].split(' ', 1)[-1] # İlk boşluktan sonrasını ad olarak al
+
+    return info
+
+def smart_categorize(channel_name):
+    """Verilen kanal adına göre akıllı bir kategori döndürür."""
     channel_name_lower = channel_name.lower()
     for category, keywords in CATEGORIES.items():
         if any(keyword in channel_name_lower for keyword in keywords):
@@ -55,7 +69,6 @@ def categorize_channel(channel_name):
 
 print("M3U listeleri indiriliyor ve birleştiriliyor...")
 
-# Her bir URL için işlem yap
 for url in playlist_urls:
     try:
         print(f"İşleniyor: {url}")
@@ -68,7 +81,8 @@ for url in playlist_urls:
         for i in range(len(lines)):
             line = lines[i].strip()
             if line.startswith("#EXTINF"):
-                channel_name, attributes = get_channel_info(line)
+                channel_info = parse_extinf_line(line)
+                channel_name = channel_info["name"]
                 
                 if channel_name and i + 1 < len(lines) and lines[i+1].strip().startswith("http"):
                     stream_url = lines[i+1].strip()
@@ -76,13 +90,14 @@ for url in playlist_urls:
                     if (channel_name, stream_url) not in unique_channels_set:
                         unique_channels_set.add((channel_name, stream_url))
                         
-                        # Kanalı kategorize et
-                        category = categorize_channel(channel_name)
+                        # ANA MANTIK: Mevcut kategori varsa onu kullan, yoksa akıllı sistemi devreye sok.
+                        category = channel_info["category"]
+                        if not category or category.isspace(): # Kategori yoksa veya boşluktan oluşuyorsa
+                            category = smart_categorize(channel_name)
                         
-                        # Kanal bilgilerini sözlüğe ekle
                         channel_data = {
                             "name": channel_name,
-                            "attributes": attributes,
+                            "attributes": channel_info["attributes"],
                             "url": stream_url
                         }
                         categorized_channels[category].append(channel_data)
@@ -94,23 +109,20 @@ for url in playlist_urls:
 
 print("\nKategorizasyon tamamlandı. Çıktı dosyası oluşturuluyor...")
 
-# Birleştirilmiş ve kategorize edilmiş içeriği bir dosyaya yaz
 output_filename = "birlesik_liste.m3u"
 with open(output_filename, "w", encoding="utf-8") as f:
     f.write("#EXTM3U\n")
     
-    # Kategorileri (ve kanalları) alfabetik olarak sırala
     for category in sorted(categorized_channels.keys()):
         print(f"- {category}: {len(categorized_channels[category])} kanal bulundu.")
-        # Her kategorideki kanalları isme göre sırala
         sorted_channels = sorted(categorized_channels[category], key=lambda x: x['name'])
         
         for channel in sorted_channels:
-            # group-title özelliğini #EXTINF satırına ekle
+            # Temizlenmiş özelliklerin sonuna yeni (veya korunmuş) kategoriyi ve adı ekle
             extinf_line = f'{channel["attributes"]} group-title="{category}",{channel["name"]}'
             f.write(extinf_line + "\n")
             f.write(channel["url"] + "\n")
 
 print(f"\nİşlem tamamlandı!")
 print(f"Toplam {len(unique_channels_set)} benzersiz kanal bulundu.")
-print(f"Birleştirilmiş ve kategorize edilmiş liste '{output_filename}' dosyasına kaydedildi.")
+print(f"Birleştirilmiş ve düzenlenmiş liste '{output_filename}' dosyasına kaydedildi.")
