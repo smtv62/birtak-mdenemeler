@@ -206,6 +206,7 @@ class SporcafeManager:
                     base = self.extract_base_url(r.text)
                     if base:
                         stream = f"{base}{ch['source_id']}/playlist.m3u8"
+                        # HATA BURADAYDI, DÜZELTİLDİ
                         print(f"Sporcafe: {ch['name']} -> Alındı")
                         result.append((ch, stream))
             except Exception:
@@ -265,15 +266,12 @@ class SalamisTVManager:
         print(f"SalamisTV içerik uzunluğu: {len(content)}")
         return content
 
-# ---------------- NexaTVManager (YENİ EKLENDİ VE İSMİ DEĞİŞTİRİLDİ) ----------------
+# ---------------- NexaTVManager ----------------
 class NexaTVManager:
-    """
-    Bu sınıf, api.codetabs.com proxy'si üzerinden yayın yapan
-    "NexaTV" grubuna ait statik listeyi oluşturur.
-    """
     def __init__(self):
         self.proxy_prefix = "https://api.codetabs.com/v1/proxy/?quest="
         self.base_stream_url = "https://andro.okan9gote10sokan.cfd/checklist/"
+
         self.logo_url = "https://i.hizliresim.com/8xzjgqv.jpg"
         self.group_title = "NexaTV"
         self.channels = [
@@ -314,7 +312,6 @@ class NexaTVManager:
             {"name": "TR:Exxen 7 HD", "path": "androstreamliveexn7.m3u8"},
         ]
 
-    
     def calistir(self):
         m3u = []
         for channel in self.channels:
@@ -343,7 +340,7 @@ def gorevi_calistir():
         TRGOALSManager(),
         SporcafeManager(),
         SalamisTVManager(),
-        NexaTVManager() # Yeni kaynak eklendi ve ismi değiştirildi
+        NexaTVManager() 
     ]
 
     # Her bir kaynağı işle ve listeye ekle
@@ -368,4 +365,4 @@ def gorevi_calistir():
     print("--- Görev Tamamlandı. ---")
 
 if __name__ == "__main__":
-    gorevi_calistir()-nam
+    gorevi_calistir()
