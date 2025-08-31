@@ -1,103 +1,106 @@
 import requests
 import re
-from collections import defaultdict
 
-# Birleştirilecek M3U afiş listelerinin URL'leri
-playlist_urls = [
+# Birleştirilecek M3U listelerinin URL'leri
+URLS = [
     "https://cine10giris.org.tr/ulusaltv.m3u",
     "https://raw.githubusercontent.com/ahmet21ahmet/F-n/main/scripts%2Fcanli-tv.m3u",
     "https://raw.githubusercontent.com/ahmet21ahmet/Trgoalsvsdengetv/main/Birlesik.m3u"
 ]
 
-# Kaynakta kategorisi bulunmayan kanallar için varsayılan grup adı
-DEFAULT_CATEGORY = "Diğer Kanallar"
+# Çıktı dosyasının adı
+OUTPUT_FILE = "birlesik_liste.m3u"
 
-# Kanalların benzersizliğini kontrol etmek için kullanılacak set
-unique_channels_set = set()
-
-# Kategorize edilmiş kanalları tutacak dictionary
-categorized_channels = defaultdict(list)
-
-def parse_extinf_line(line):
+def get_group_title(info_line):
     """
-    #EXTINF satırını analiz eder. Mevcut group-title'ı, kanal adını ve 
-    diğer özellikleri (temizlenmiş halde) ayıklar.
+    #EXTINF satırından grup başlığını (kategoriyi) çeker.
     """
-    info = {
-        "name": None,
-        "category": None,
-        "attributes": line
-    }
-    
-    match = re.search(r'group-title="([^"]*)"', line, re.IGNORECASE)
+    match = re.search(r'group-title="([^"]+)"', info_line)
     if match:
-        info["category"] = match.group(1).strip()
-        info["attributes"] = (line[:match.start()] + line[match.end():]).strip()
+        return match.group(1)
+    return "Diğer" # Kategori bulunamazsa varsayılan olarak bu kategoriye ekler
 
-    try:
-        parts = info["attributes"].rsplit(',', 1)
-        info["attributes"] = parts[0]
-        info["name"] = parts[1].strip()
-    except IndexError:
-        info["name"] = info["attributes"].split(' ', 1)[-1]
-
-    return info
-
-print("M3U listeleri indiriliyor ve birleştiriliyor...")
-
-for url in playlist_urls:
-    try:
-        print(f"İşleniyor: {url}")
-        response = requests.get(url, timeout=20)
-        response.raise_for_status()
-        response.encoding = response.apparent_encoding or 'utf-8'
-        playlist_content = response.text
-        lines = playlist_content.split('\n')
-        
-        for i in range(len(lines)):
-            line = lines[i].strip()
-            if line.startswith("#EXTINF"):
-                channel_info = parse_extinf_line(line)
-                channel_name = channel_info["name"]
-                
-                if channel_name and i + 1 < len(lines) and lines[i+1].strip().startswith("http"):
-                    stream_url = lines[i+1].strip()
-                    
-                    if (channel_name, stream_url) not in unique_channels_set:
-                        unique_channels_set.add((channel_name, stream_url))
-                        
-                        # ANA MANTIK: Mevcut kategori varsa onu kullan, yoksa varsayılanı ata.
-                        category = channel_info["category"]
-                        if not category or category.isspace():
-                            category = DEFAULT_CATEGORY
-                        
-                        channel_data = {
-                            "name": channel_name,
-                            "attributes": channel_info["attributes"],
-                            "url": stream_url
-                        }
-                        categorized_channels[category].append(channel_data)
-
-    except requests.exceptions.RequestException as e:
-        print(f"Hata: {url} adresi indirilemedi. Hata: {e}")
-    except Exception as e:
-        print(f"Bilinmeyen bir hata oluştu: {url} işlenirken hata: {e}")
-
-print("\nKategorizasyon tamamlandı. Çıktı dosyası oluşturuluyor...")
-
-output_filename = "birlesik_liste.m3u"
-with open(output_filename, "w", encoding="utf-8") as f:
-    f.write("#EXTM3U\n")
+def process_m3u_lists():
+    """
+    URL'lerdeki M3U listelerini işler, birleştirir ve dosyaya yazar.
+    """
+    # Kanalları kategorilerine göre saklamak için bir sözlük (dictionary) yapısı
+    # Örnek: {'Ulusal Kanallar': [kanal1_bilgisi, kanal2_bilgisi], 'Haber': [kanal3_bilgisi]}
+    categorized_channels = {}
     
-    for category in sorted(categorized_channels.keys()):
-        print(f"- {category}: {len(categorized_channels[category])} kanal bulundu.")
-        sorted_channels = sorted(categorized_channels[category], key=lambda x: x['name'])
-        
-        for channel in sorted_channels:
-            extinf_line = f'{channel["attributes"]} group-title="{category}",{channel["name"]}'
-            f.write(extinf_line + "\n")
-            f.write(channel["url"] + "\n")
+    # Tekrar eden yayın URL'lerini kontrol etmek için bir set
+    seen_urls = set()
 
-print(f"\nİşlem tamamlandı!")
-print(f"Toplam {len(unique_channels_set)} benzersiz kanal bulundu.")
-print(f"Birleştirilmiş ve düzenlenmiş liste '{output_filename}' dosyasına kaydedildi.")
+    print("M3U listeleri indiriliyor ve işleniyor...")
+
+    for url in URLS:
+        try:
+            print(f"-> {url} işleniyor...")
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()  # HTTP hatası varsa programı durdurur
+            
+            # İçeriği satırlara ayır
+            lines = response.text.splitlines()
+
+            # Satırları gezerek kanal bilgilerini ve URL'sini al
+            for i in range(len(lines)):
+                if lines[i].startswith("#EXTINF:"):
+                    info_line = lines[i]
+                    
+                    # Sonraki satırın yayın URL'si olduğunu varsayalım
+                    if i + 1 < len(lines) and lines[i+1].strip().startswith("http"):
+                        stream_url = lines[i+1].strip()
+
+                        # Eğer bu yayın URL'si daha önce eklenmediyse işle
+                        if stream_url not in seen_urls:
+                            # Kanal bilgisini ve URL'sini bir demet (tuple) olarak sakla
+                            channel_data = (info_line, stream_url)
+                            
+                            # Kategoriyi al
+                            category = get_group_title(info_line)
+                            
+                            # Eğer bu kategori daha önce oluşturulmadıysa, oluştur
+                            if category not in categorized_channels:
+                                categorized_channels[category] = []
+                            
+                            # Kanalı ilgili kategoriye ekle
+                            categorized_channels[category].append(channel_data)
+                            
+                            # Yayın URL'sini görülenlere ekle
+                            seen_urls.add(stream_url)
+
+        except requests.exceptions.RequestException as e:
+            print(f"Hata: {url} adresine ulaşılamadı. Hata detayı: {e}")
+        except Exception as e:
+            print(f"Beklenmedik bir hata oluştu: {e}")
+
+    print("\nListeler birleştirildi. Şimdi dosya oluşturuluyor...")
+    
+    # Kategorileri alfabetik olarak sırala
+    sorted_categories = sorted(categorized_channels.keys())
+
+    # Sonuçları dosyaya yaz
+    try:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+            f.write("#EXTM3U\n") # M3U dosyasının başlangıç etiketi
+            
+            total_channels = 0
+            for category in sorted_categories:
+                channels_in_category = categorized_channels[category]
+                if channels_in_category:
+                    # Her kategori arasına bir boşluk bırakmak okunabilirliği artırır
+                    f.write("\n") 
+                    print(f"-> '{category}' kategorisinde {len(channels_in_category)} kanal bulundu.")
+                    for info, url in channels_in_category:
+                        f.write(f"{info}\n")
+                        f.write(f"{url}\n")
+                        total_channels += 1
+        
+        print(f"\nİşlem tamamlandı! Toplam {len(sorted_categories)} kategori ve {total_channels} benzersiz kanal '{OUTPUT_FILE}' dosyasına kaydedildi.")
+
+    except IOError as e:
+        print(f"Dosya yazma hatası: {e}")
+
+
+if __name__ == "__main__":
+    process_m3u_lists()
