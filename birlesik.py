@@ -148,7 +148,7 @@ class TRGOALSManager:
         print(f"TRGOALS içerik uzunluğu: {len(content)}")
         return content
 
-# ---------------- SporcafeManager (YENİ EKLENDİ) ----------------
+# ---------------- SporcafeManager ----------------
 class SporcafeManager:
     def __init__(self):
         self.httpx = Client(timeout=10, verify=False)
@@ -221,7 +221,7 @@ class SporcafeManager:
             print("Sporcafe: Yayın domaini bulunamadı.")
             return ""
         print(f"Sporcafe: Yayın domaini -> {stream_domain}")
-        
+
         streams = self.fetch_streams(stream_domain, referer)
         if not streams:
             print("Sporcafe: Hiçbir yayın alınamadı.")
@@ -233,9 +233,101 @@ class SporcafeManager:
             m3u.append(f'#EXTVLCOPT:http-referrer={referer}')
             m3u.append(f'#EXTVLCOPT:http-user-agent={self.HEADERS["User-Agent"]}')
             m3u.append(url)
-        
+
         content = "\n".join(m3u)
         print(f"Sporcafe içerik uzunluğu: {len(content)}")
+        return content
+
+# ---------------- SalamisTVManager ----------------
+class SalamisTVManager:
+    def __init__(self):
+        self.referer_url = "https://salamistv15.online/"
+        self.base_stream_url = "https://macarenatv5.com"
+        self.logo_url = "https://i.hizliresim.com/b6xqz10.jpg"
+        self.channels = [
+            {"name": "BEIN Sport 1", "id": "701"}, {"name": "BEIN Sport 2", "id": "702"},
+            {"name": "BEIN Sport 3", "id": "703"}, {"name": "BEIN Sport 4", "id": "704"},
+            {"name": "S Spor", "id": "705"}, {"name": "S Spor 2", "id": "730"},
+            {"name": "Tivibu Spor 1", "id": "706"}, {"name": "Tivibu Spor 2", "id": "711"},
+            {"name": "Tivibu Spor 3", "id": "712"}, {"name": "Tivibu Spor 4", "id": "713"},
+            {"name": "Spor Smart 1", "id": "707"}, {"name": "Spor Smart 2", "id": "708"},
+            {"name": "A Spor", "id": "709"}, {"name": "NBA", "id": "nba"}, {"name": "SKYF1", "id": "skyf1"},
+        ]
+
+    def calistir(self):
+        m3u = []
+        for channel in self.channels:
+            stream_url = f"{self.base_stream_url}/{channel['id']}/mono.m3u8"
+            m3u.append(f'#EXTINF:-1 tvg-id="spor" tvg-logo="{self.logo_url}" group-title="SalamisTV",{channel["name"]}')
+            m3u.append(f'#EXTVLCOPT:http-referer={self.referer_url}')
+            m3u.append(stream_url)
+        content = "\n".join(m3u)
+        print(f"SalamisTV içerik uzunluğu: {len(content)}")
+        return content
+
+# ---------------- NexaTVManager (YENİ EKLENDİ VE İSMİ DEĞİŞTİRİLDİ) ----------------
+class NexaTVManager:
+    """
+    Bu sınıf, api.codetabs.com proxy'si üzerinden yayın yapan
+    "NexaTV" grubuna ait statik listeyi oluşturur.
+    """
+    def __init__(self):
+        self.proxy_prefix = "https://api.codetabs.com/v1/proxy/?quest="
+        self.base_stream_url = "https://andro.okan9gote10sokan.cfd/checklist/"
+        self.logo_url = "https://i.hizliresim.com/8xzjgqv.jpg"
+        self.group_title = "NexaTV"
+        self.channels = [
+            {"name": "TR:beIN Sport 1 HD", "path": "androstreamlivebs1.m3u8"},
+            {"name": "TR:beIN Sport 2 HD", "path": "androstreamlivebs2.m3u8"},
+            {"name": "TR:beIN Sport 3 HD", "path": "androstreamlivebs3.m3u8"},
+            {"name": "TR:beIN Sport 4 HD", "path": "androstreamlivebs4.m3u8"},
+            {"name": "TR:beIN Sport 5 HD", "path": "androstreamlivebs5.m3u8"},
+            {"name": "TR:beIN Sport Max 1 HD", "path": "androstreamlivebsm1.m3u8"},
+            {"name": "TR:beIN Sport Max 2 HD", "path": "androstreamlivebsm2.m3u8"},
+            {"name": "TR:S Sport 1 HD", "path": "androstreamlivess1.m3u8"},
+            {"name": "TR:S Sport 2 HD", "path": "androstreamlivess2.m3u8"},
+            {"name": "TR:Tivibu Sport HD", "path": "androstreamlivets.m3u8"},
+            {"name": "TR:Tivibu Sport 1 HD", "path": "androstreamlivets1.m3u8"},
+            {"name": "TR:Tivibu Sport 2 HD", "path": "androstreamlivets2.m3u8"},
+            {"name": "TR:Tivibu Sport 3 HD", "path": "androstreamlivets3.m3u8"},
+            {"name": "TR:Tivibu Sport 4 HD", "path": "androstreamlivets4.m3u8"},
+            {"name": "TR:Smart Sport 1 HD", "path": "androstreamlivesm1.m3u8"},
+            {"name": "TR:Smart Sport 2 HD", "path": "androstreamlivesm2.m3u8"},
+            {"name": "TR:Euro Sport 1 HD", "path": "androstreamlivees1.m3u8"},
+            {"name": "TR:Euro Sport 2 HD", "path": "androstreamlivees2.m3u8"},
+            {"name": "TR:Tabii HD", "path": "androstreamlivetb.m3u8"},
+            {"name": "TR:Tabii 1 HD", "path": "androstreamlivetb1.m3u8"},
+            {"name": "TR:Tabii 2 HD", "path": "androstreamlivetb2.m3u8"},
+            {"name": "TR:Tabii 3 HD", "path": "androstreamlivetb3.m3u8"},
+            {"name": "TR:Tabii 4 HD", "path": "androstreamlivetb4.m3u8"},
+            {"name": "TR:Tabii 5 HD", "path": "androstreamlivetb5.m3u8"},
+            {"name": "TR:Tabii 6 HD", "path": "androstreamlivetb6.m3u8"},
+            {"name": "TR:Tabii 7 HD", "path": "androstreamlivetb7.m3u8"},
+            {"name": "TR:Tabii 8 HD", "path": "androstreamlivetb8.m3u8"},
+            {"name": "TR:Exxen HD", "path": "androstreamliveexn.m3u8"},
+            {"name": "TR:Exxen 1 HD", "path": "androstreamliveexn1.m3u8"},
+            {"name": "TR:Exxen 2 HD", "path": "androstreamliveexn2.m3u8"},
+            {"name": "TR:Exxen 3 HD", "path": "androstreamliveexn3.m3u8"},
+            {"name": "TR:Exxen 4 HD", "path": "androstreamliveexn4.m3u8"},
+            {"name": "TR:Exxen 5 HD", "path": "androstreamliveexn5.m3u8"},
+            {"name": "TR:Exxen 6 HD", "path": "androstreamliveexn6.m3u8"},
+            {"name": "TR:Exxen 7 HD", "path": "androstreamliveexn7.m3u8"},
+        ]
+
+    
+    def calistir(self):
+        m3u = []
+        for channel in self.channels:
+            # Proxy ve asıl URL'i birleştir
+            real_url = f"{self.base_stream_url}{channel['path']}"
+            stream_url = f"{self.proxy_prefix}{real_url}"
+
+            # M3U formatını oluştur
+            m3u.append(f'#EXTINF:-1 tvg-id="sport.tr" tvg-name="{channel["name"]}" tvg-logo="{self.logo_url}" group-title="{self.group_title}",{channel["name"]}')
+            m3u.append(stream_url)
+
+        content = "\n".join(m3u)
+        print(f"NexaTV içerik uzunluğu: {len(content)}")
         return content
 
 # ---------------- Main Execution ----------------
@@ -249,7 +341,9 @@ def gorevi_calistir():
         Dengetv54Manager(),
         XYZsportsManager(),
         TRGOALSManager(),
-        SporcafeManager() # Yeni kaynak eklendi
+        SporcafeManager(),
+        SalamisTVManager(),
+        NexaTVManager() # Yeni kaynak eklendi ve ismi değiştirildi
     ]
 
     # Her bir kaynağı işle ve listeye ekle
@@ -274,4 +368,4 @@ def gorevi_calistir():
     print("--- Görev Tamamlandı. ---")
 
 if __name__ == "__main__":
-    gorevi_calistir()
+    gorevi_calistir()-nam
