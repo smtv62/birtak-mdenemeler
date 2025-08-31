@@ -206,7 +206,6 @@ class SporcafeManager:
                     base = self.extract_base_url(r.text)
                     if base:
                         stream = f"{base}{ch['source_id']}/playlist.m3u8"
-                        # HATA BURADAYDI, DÜZELTİLDİ
                         print(f"Sporcafe: {ch['name']} -> Alındı")
                         result.append((ch, stream))
             except Exception:
@@ -271,7 +270,6 @@ class NexaTVManager:
     def __init__(self):
         self.proxy_prefix = "https://api.codetabs.com/v1/proxy/?quest="
         self.base_stream_url = "https://andro.okan9gote10sokan.cfd/checklist/"
-
         self.logo_url = "https://i.hizliresim.com/8xzjgqv.jpg"
         self.group_title = "NexaTV"
         self.channels = [
@@ -315,16 +313,78 @@ class NexaTVManager:
     def calistir(self):
         m3u = []
         for channel in self.channels:
-            # Proxy ve asıl URL'i birleştir
             real_url = f"{self.base_stream_url}{channel['path']}"
             stream_url = f"{self.proxy_prefix}{real_url}"
-
-            # M3U formatını oluştur
             m3u.append(f'#EXTINF:-1 tvg-id="sport.tr" tvg-name="{channel["name"]}" tvg-logo="{self.logo_url}" group-title="{self.group_title}",{channel["name"]}')
+            m3u.append(stream_url)
+        content = "\n".join(m3u)
+        print(f"NexaTV içerik uzunluğu: {len(content)}")
+        return content
+
+# ---------------- JustSportHDManager ----------------
+class JustSportHDManager:
+    def __init__(self):
+        self.httpx = Client(timeout=10, verify=False)
+        self.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0"
+        # Bu liste sadece gerçek kanalları içerir, tanıtım linkleri hariç tutulmuştur.
+        self.CHANNELS = [
+            {"name": "Bein Sports 1", "logo": "bein1.png", "path": "bein1.m3u8"},
+            {"name": "Bein Sports 2", "logo": "bein2.png", "path": "bein2.m3u8"},
+            {"name": "Bein Sports 3", "logo": "bein3.png", "path": "bein3.m3u8"},
+            {"name": "Bein Sports 4", "logo": "bein4.png", "path": "bein4.m3u8"},
+            {"name": "Bein Sports 5", "logo": "bein5.png", "path": "bein5.m3u8"},
+            {"name": "Exxen Spor", "logo": "exxen.png", "path": "exxen.m3u8"},
+            {"name": "S Sport", "logo": "ssport.png", "path": "ssport.m3u8"},
+            {"name": "S Sport 2", "logo": "s2sport.png", "path": "ssport2.m3u8"},
+            {"name": "S Spor Plus", "logo": "ssportplus.png", "path": "ssportplus.m3u8"},
+            {"name": "Spor Smart", "logo": "sporsmart.png", "path": "sporsmart.m3u8"},
+            {"name": "Tivibu Spor 1", "logo": "tivibuspor.png", "path": "tivibu1.m3u8"},
+            {"name": "Tivibu Spor 2", "logo": "tivibuspor2.png", "path": "tivibu2.m3u8"},
+            {"name": "Tivibu Spor 3", "logo": "tivibuspor3.png", "path": "tivibu3.m3u8"},
+        ]
+
+    def find_working_domain(self, start=40, end=100):
+        headers = {"User-Agent": self.USER_AGENT}
+        for i in range(start, end + 1):
+            url = f"https://justsporthd{i}.xyz/"
+            try:
+                r = self.httpx.get(url, headers=headers, timeout=5)
+                if r.status_code == 200 and "JustSportHD" in r.text:
+                    print(f"JustSportHD: Çalışan domain bulundu -> {url}")
+                    return r.text, url
+            except Exception:
+                continue
+        print("JustSportHD: Çalışan domain bulunamadı.")
+        return None, None
+
+    def find_stream_domain(self, html):
+        match = re.search(r'https?://(streamnet[0-9]+\.xyz)', html)
+        return f"https://{match.group(1)}" if match else None
+
+    def calistir(self):
+        html, referer_url = self.find_working_domain()
+        if not html or not referer_url:
+            return ""
+
+        stream_base_url = self.find_stream_domain(html)
+        if not stream_base_url:
+            print("JustSportHD: Yayın domaini (streamnet) bulunamadı.")
+            return ""
+        print(f"JustSportHD: Yayın domaini bulundu -> {stream_base_url}")
+
+        m3u = []
+        for channel in self.CHANNELS:
+            channel_name = f"{channel['name']} JustSportHD"
+            logo_url = f"{referer_url.strip('/')}/channel_logo/{channel['logo']}"
+            stream_url = f"{stream_base_url}/?url=https://streamcdn.xyz/hls/{channel['path']}"
+            
+            m3u.append(f'#EXTINF:-1 tvg-logo="{logo_url}" group-title="JustSportHD Liste",{channel_name}')
+            m3u.append(f'#EXTVLCOPT:http-referer={referer_url}')
+            m3u.append(f'#EXTVLCOPT:http-user-agent={self.USER_AGENT}')
             m3u.append(stream_url)
 
         content = "\n".join(m3u)
-        print(f"NexaTV içerik uzunluğu: {len(content)}")
+        print(f"JustSportHD içerik uzunluğu: {len(content)}")
         return content
 
 # ---------------- Main Execution ----------------
@@ -333,17 +393,16 @@ def gorevi_calistir():
     CIKTI_DOSYASI = "Birlesik.m3u"
     all_m3u = ["#EXTM3U"]
 
-    # Kaynakları listeye ekle
     kaynaklar = [
         Dengetv54Manager(),
         XYZsportsManager(),
         TRGOALSManager(),
         SporcafeManager(),
         SalamisTVManager(),
-        NexaTVManager() 
+        NexaTVManager(),
+        JustSportHDManager()
     ]
 
-    # Her bir kaynağı işle ve listeye ekle
     for kaynak in kaynaklar:
         try:
             print(f"\n--- {kaynak.__class__.__name__} işleniyor... ---")
@@ -353,12 +412,11 @@ def gorevi_calistir():
         except Exception as e:
             print(f"{kaynak.__class__.__name__} işlenirken bir hata oluştu: {e}")
 
-    # Timestamp ekle
     all_m3u.append(f'\n# Generated: {datetime.utcnow().isoformat()}')
 
     try:
         with open(CIKTI_DOSYASI, "w", encoding="utf-8") as f:
-            f.write("\n\n".join(all_m3u)) # Her kaynak arasına boşluk ekle
+            f.write("\n\n".join(all_m3u))
         print(f"\n✅ Birleşik M3U oluşturuldu: {CIKTI_DOSYASI}")
     except Exception as e:
         print(f"Dosya yazılırken bir hata oluştu: {e}")
