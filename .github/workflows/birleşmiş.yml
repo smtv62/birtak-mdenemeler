@@ -3,9 +3,9 @@ name: M3U Playlist Birleştirici
 
 # İş akışını tetikleyecek olaylar
 on:
-  # Her gün gece yarısı (UTC) otomatik olarak çalıştır
+  # Her 30 dakikada bir otomatik olarak çalıştırır
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '*/30 * * * *'
   
   # Main branch'e her push yapıldığında çalıştır
   push:
